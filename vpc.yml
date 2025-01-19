@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "VPC template"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: Dev
+    AllowedValues:
+      - Dev
+      - Prod
+      - QA
+    Description: Select environment
+
+  CidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedValues:
+      - 10.0.0.0/16
+      - 10.1.0.0/16
+      - 10.2.0.0/16
+    Description: Select VPC CIDR  
+
+Rules:
+  'regionsAllowed':
+    Assertions:
+      - Assert:
+          Fn::Or:
+            - Fn::Or:
+                - !Equals [ !Ref "AWS::Region", "ap-south-1" ]
+                - !Equals [ !Ref "AWS::Region", "eu-north-1" ]
+            - Fn::Or:
+                - !Equals [ !Ref "AWS::Region", "ap-east-1" ]
+                - !Equals [ !Ref "AWS::Region", "us-east-1" ]                
+
+        AssertDescription: 'This region is not supported. Please choose another region.'
+
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref CidrBlock
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: 
+        -
+          Key: Name
+          Value: !Sub "CFTVPC-${Environment}"
+        -
+          Key: Environment
+          Value: !Ref Environment
+
+  Igw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: 
+        -
+          Key: Name
+          Value: !Sub "IGW-${Environment}"
+        -
+          Key: Environment
+          Value: !Ref Environment
+
+  AttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref Igw
+
+Outputs:
+  VPCId:
+    Description: VPC Id
+    Value: !Ref Vpc
+    Export:
+      Name: VPCID
+  VPCCidr:
+    Description: VPC Id
+    Value: !GetAtt Vpc.CidrBlock
+    Export:
+      Name: VPCCidr
+  IGW:
+    Description: IGW
+    Value: !Ref Igw
+    Export:
+      Name: IGW
